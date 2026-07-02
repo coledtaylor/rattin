@@ -103,6 +103,13 @@ Window {
         function onTimeChanged(seconds) {
             transport.timeChanged(seconds)
             root.currentTime = seconds
+            // First frame of the newly loaded file is rendering — reveal mpv now.
+            // Until this point mpv stays hidden so the React loading overlay
+            // ("Connecting to peers…") shows through instead of a blank/stale frame.
+            if (root.playing && !mpvPlayer.visible) {
+                mpvPlayer.visible = true
+                controlsOverlay.visible = true
+            }
         }
         function onDurationChanged(seconds) {
             transport.durationChanged(seconds)
@@ -116,9 +123,15 @@ Window {
         function onIsPlayingChanged(p) {
             transport.isPlayingChanged(p)
             root.playing = p
-            mpvPlayer.visible = p
-            controlsOverlay.visible = p
-            if (p) trackRefreshTimer.start()
+            // Hide the mpv surface immediately on stop. On play, do NOT reveal it
+            // yet — wait for the first decoded frame (onTimeChanged) so the previous
+            // stream's frozen frame never lingers on top of the loading overlay.
+            if (!p) {
+                mpvPlayer.visible = false
+                controlsOverlay.visible = false
+            } else {
+                trackRefreshTimer.start()
+            }
         }
     }
 
